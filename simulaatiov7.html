@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Sport Funding Simulator (Summary Comparison)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 1rem; height: 1rem; background: #3b82f6; cursor: pointer; border-radius: 50%;
+        }
+        /* Status Badges */
+        .badge-new { background-color: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .badge-quit { background-color: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+    </style>
+</head>
+<body class="p-6">
+
+<div class="max-w-[90rem] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
+    
+    <!-- LEFT PANEL: CONTROLS -->
+    <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-sm h-fit space-y-6">
+        <h1 class="text-xl font-bold text-gray-800 border-b pb-2">Simulation Config</h1>
+        
+        <!-- Population Settings -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Total Applicants</label>
+            <input type="number" id="numAthletes" value="200" class="w-full border rounded p-2 text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none">
+            <p class="text-xs text-gray-500 mt-1">Rec: 100 - 300</p>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">MC Iterations</label>
+            <input type="number" id="numIterations" value="1000" min="100" max="50000" step="100" class="w-full border rounded p-2 text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none">
+            <p class="text-xs text-gray-500 mt-1">Higher = more accuracy, slower.</p>
+        </div>
+
+        <!-- Cycle Dynamics -->
+        <div class="pt-4 border-t">
+            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Cycle Dynamics</h3>
+            
+            <!-- Turnover -->
+            <div class="mb-4">
+                <div class="flex justify-between">
+                    <label class="text-sm font-medium text-gray-700">Turnover %</label>
+                    <span id="valTurnover" class="text-sm text-gray-800 font-bold">10%</span>
+                </div>
+                <input type="range" id="turnoverPct" min="0" max="50" value="10" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb">
+                <p class="text-xs text-gray-500 mt-1">Athletes replaced in C2 (Weighted by Score)</p>
+            </div>
+
+            <!-- Development -->
+            <div>
+                <div class="flex justify-between">
+                    <label class="text-sm font-medium text-gray-700">Dev. Prob. %</label>
+                    <span id="valDev" class="text-sm text-green-600 font-bold">30%</span>
+                </div>
+                <input type="range" id="devProb" min="0" max="100" value="30" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb">
+            </div>
+            
+            <div class="mt-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Max Skill Increase</label>
+                <input type="number" id="maxSkillBoost" value="0.05" step="0.01" min="0" max="0.5" class="w-full border rounded p-2 text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+        </div>
+
+        <!-- Strategic Budgets (NEW) -->
+        <div class="pt-4 border-t">
+            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Strategic Budgets</h3>
+            
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-blue-600 mb-1">Gambler Range</label>
+                <div class="flex gap-2">
+                    <input type="number" id="gamblerMin" value="1.2" step="0.1" class="w-1/2 border rounded p-1 text-gray-700">
+                    <span class="text-gray-400 self-center">-</span>
+                    <input type="number" id="gamblerMax" value="2.0" step="0.1" class="w-1/2 border rounded p-1 text-gray-700">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-600 mb-1">Conservative Range</label>
+                <div class="flex gap-2">
+                    <input type="number" id="consMin" value="0.3" step="0.1" class="w-1/2 border rounded p-1 text-gray-700">
+                    <span class="text-gray-400 self-center">-</span>
+                    <input type="number" id="consMax" value="0.8" step="0.1" class="w-1/2 border rounded p-1 text-gray-700">
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <div class="flex justify-between">
+                    <label class="text-sm font-medium text-green-600">Honest Cost Mult.</label>
+                    <span id="valHonestMult" class="text-sm text-green-800 font-bold">1.0x</span>
+                </div>
+                <input type="range" id="honestMult" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb">
+                <p class="text-xs text-gray-500 mt-1 leading-tight">
+                    Multiplies the calculated "true need" of Honest athletes.<br>
+                    <span class="text-gray-400">> 1.0 = Inflation (High Cost)</span><br>
+                    <span class="text-gray-400">< 1.0 = Deflation (Low Cost)</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="pt-4 border-t">
+            <div class="flex justify-between">
+                <label class="text-sm font-medium text-gray-700">Gambler %</label>
+                <span id="valGambler" class="text-sm text-blue-600 font-bold">20%</span>
+            </div>
+            <input type="range" id="pctGambler" min="0" max="100" value="20" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb">
+            <p class="text-xs text-gray-500 mt-1">Always Aims Tier 1 (Gold)</p>
+        </div>
+
+        <div>
+            <div class="flex justify-between">
+                <label class="text-sm font-medium text-gray-700">Honest %</label>
+                <span id="valHonest" class="text-sm text-green-600 font-bold">60%</span>
+            </div>
+            <input type="range" id="pctHonest" min="0" max="100" value="60" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb">
+            <p class="text-xs text-gray-500 mt-1">Aims Best to Best+2</p>
+        </div>
+
+        <div class="p-3 bg-gray-50 rounded border border-gray-200">
+            <div class="flex justify-between">
+                <span class="text-sm font-medium text-gray-600">Conservative %</span>
+                <span id="valConservative" class="text-sm text-gray-800 font-bold">20%</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">Maintenance (Aims for Best)</p>
+        </div>
+
+        <!-- System Logic -->
+        <div class="pt-4 border-t">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Penalty Multiplier</label>
+            <input type="number" id="penaltyMult" value="1.5" step="0.1" class="w-full border rounded p-2 text-gray-700">
+            <p class="text-xs text-gray-500 mt-1">Applied on value difference if miss >= 2 tiers.</p>
+        </div>
+
+        <!-- Comparison Toggle -->
+        <div class="pt-4 border-t flex items-center gap-2">
+            <input type="checkbox" id="showComparison" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300">
+            <label for="showComparison" class="text-sm font-medium text-gray-800">Comp. vs Meritocracy</label>
+        </div>
+        <p class="text-xs text-gray-500 -mt-1 pl-7">Adds stats to Top Boxes.</p>
+
+
+        <button onclick="runSimulation()" id="runBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow transition transform active:scale-95">
+            Run Simulation
+        </button>
+        <p id="statusMsg" class="text-center text-xs text-gray-500 h-4"></p>
+    </div>
+
+    <!-- RIGHT PANEL: DASHBOARD -->
+    <div class="lg:col-span-3 space-y-6">
+        
+        <!-- TOP CARDS: SYSTEM SUMMARY -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Cycle 1 Card -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-500 relative overflow-hidden">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-gray-500 text-xs font-uppercase font-bold tracking-wider">CYCLE 1 (ENTRY)</h3>
+                    <div id="c1_budget_badge" class="px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-600">
+                        --% Budget
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-baseline mt-2">
+                    <div>
+                        <span class="text-3xl font-bold text-gray-800" id="c1_funded">--</span>
+                        <span class="text-sm text-gray-500">athletes funded</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="block text-xl font-semibold text-gray-700" id="c1_cutoff">-- pts</span>
+                        <span class="text-xs text-gray-400" id="c1_context">--</span>
+                    </div>
+                </div>
+                <div class="mt-2 text-xs text-gray-400 flex justify-between">
+                    <span id="c1_range_container">Range: <span id="c1_range">--</span></span>
+                </div>
+            </div>
+
+            <!-- Cycle 2 Card -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-purple-500 relative overflow-hidden">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-gray-500 text-xs font-uppercase font-bold tracking-wider">CYCLE 2 (RENEWAL)</h3>
+                    <div id="c2_budget_badge" class="px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-600">
+                        --% Budget
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-baseline mt-2">
+                    <div>
+                        <span class="text-3xl font-bold text-gray-800" id="c2_funded">--</span>
+                        <span class="text-sm text-gray-500">athletes funded</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="block text-xl font-semibold text-gray-700" id="c2_cutoff">-- pts</span>
+                        <span class="text-xs text-gray-400" id="c2_context">--</span>
+                    </div>
+                </div>
+                <div class="mt-2 text-xs text-gray-400 flex justify-between">
+                    <span id="c2_range_container">Range: <span id="c2_range">--</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHART AREA -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm">
+                <h4 class="text-sm font-bold text-gray-700 mb-4">Funding Flow (Exit vs. Retention)</h4>
+                <canvas id="fundingChart" height="200"></canvas>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm">
+                <h4 class="text-sm font-bold text-gray-700 mb-4">Real Survival Rate & Avg Penalty</h4>
+                <canvas id="survivalChart" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- TABLES -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-end">
+                <div>
+                    <h3 class="font-bold text-gray-800">Profile Performance Averages</h3>
+                    <p id="turnoverSummary" class="text-xs text-gray-500 mt-1">...</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-6 py-3">Profile</th>
+                            <th class="px-6 py-3 text-right">Funded C1</th>
+                            <th class="px-6 py-3 text-right text-yellow-600">Quits (Funded)</th>
+                            <th class="px-6 py-3 text-right text-red-500">Perf. Drop</th>
+                            <th class="px-6 py-3 text-right">Funded C2</th>
+                            <th class="px-6 py-3 text-right">True Survival %</th>
+                            <th class="px-6 py-3 text-right">Avg Penalty Impact</th>
+                        </tr>
+                    </thead>
+                    <tbody id="profileTableBody" class="text-gray-600">
+                        <!-- Rows generated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                <h3 class="font-bold text-gray-800">Quality Benchmark</h3>
+                <p class="text-xs text-gray-500">Tier 1 = Medal, Tier 6 = Floor. (Lower Tier is better, Higher Skill is better)</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-6 py-3">Profile</th>
+                            <th class="px-6 py-3 text-right">Avg Tier (Survivors)</th>
+                            <th class="px-6 py-3 text-right">Avg Skill (Survivors)</th>
+                            <th class="px-6 py-3 text-right">Avg Tier (Dropouts)</th>
+                            <th class="px-6 py-3 text-right">Avg Skill (Dropouts)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="qualityTableBody" class="text-gray-600">
+                        <!-- Rows generated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- FULL ATHLETE LIST -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-gray-800">Full Athlete List (Last Run)</h3>
+                    <p class="text-xs text-gray-500">Detail view of the final Monte Carlo iteration. Sorted by C2 Rank.</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto max-h-[500px]">
+                <table class="w-full text-xs text-left whitespace-nowrap">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-100 border-b sticky top-0">
+                        <tr>
+                            <th class="px-4 py-3">ID</th>
+                            <th class="px-4 py-3">Profile</th>
+                            <th class="px-4 py-3 text-right">Skill</th>
+                            <th class="px-4 py-3 text-right">Budget</th>
+                            <th class="px-4 py-3 text-right border-l">Rank C1</th>
+                            <th class="px-4 py-3 text-right">Aim C1</th>
+                            <th class="px-4 py-3 text-right">Score C1</th>
+                            <th class="px-4 py-3 text-center">Funded C1</th>
+                            <th class="px-4 py-3 text-right border-l">Perf. Tier</th>
+                            <th class="px-4 py-3 text-right">Aim C2</th>
+                            <th class="px-4 py-3 text-right">Penalty</th>
+                            <th class="px-4 py-3 text-right border-l">Score C2</th>
+                            <th class="px-4 py-3 text-center">Funded C2</th>
+                            <th class="px-4 py-3 text-right">Rank C2</th>
+                            <th class="px-4 py-3 text-right">Rank Change</th>
+                        </tr>
+                    </thead>
+                    <tbody id="athleteListBody" class="text-gray-600 font-mono">
+                        <!-- JS populated -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- LOGIC EXPLANATION -->
+        <div class="mt-8 bg-white p-8 rounded-xl shadow-sm space-y-6 text-gray-800">
+            <h2 class="text-2xl font-bold text-gray-900 border-b pb-2">Scoring Rules & Logic</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                <!-- COLUMN 1: POINTS -->
+                <div>
+                    <h3 class="font-bold text-lg mb-3 text-blue-700">1. Base Points (Results)</h3>
+                    <p class="text-sm mb-3">Athletes submit 3 best results. Points are calculated as: <br><code>Score = PlacePoints × LevelMult × TimeMult</code></p>
+                    
+                    <table class="w-full text-sm border border-gray-200 mb-4">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="p-2 border">Placement</th>
+                                <th class="p-2 border">Points</th>
+                                <th class="p-2 border">Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td class="p-2 border">1st</td><td class="p-2 border">26</td><td class="p-2 border">39.0</td></tr>
+                            <tr><td class="p-2 border">2nd</td><td class="p-2 border">21</td><td class="p-2 border">31.5</td></tr>
+                            <tr><td class="p-2 border">3rd</td><td class="p-2 border">16</td><td class="p-2 border">24.0</td></tr>
+                            <tr><td class="p-2 border">4th-8th</td><td class="p-2 border">8</td><td class="p-2 border">12.0</td></tr>
+                            <tr><td class="p-2 border">9th-16th</td><td class="p-2 border">4</td><td class="p-2 border">6.0</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h3 class="font-bold text-lg mb-3 text-green-700">2. Aim Multiplier (Scaling)</h3>
+                    <p class="text-sm mb-2">Original scaling values.</p>
+                    <table class="w-full text-sm border border-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="p-2 border">Aim Tier</th>
+                                <th class="p-2 border">Multiplier</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td class="p-2 border">Tier 1 (Medal)</td><td class="p-2 border font-bold">1.000</td></tr>
+                            <tr><td class="p-2 border">Tier 2 (Final)</td><td class="p-2 border">0.975</td></tr>
+                            <tr><td class="p-2 border">Tier 3 (L2 Medal)</td><td class="p-2 border">0.950</td></tr>
+                            <tr><td class="p-2 border">Tier 4 (L2 Final)</td><td class="p-2 border">0.925</td></tr>
+                            <tr><td class="p-2 border">Tier 5 (Top 16)</td><td class="p-2 border">0.900</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- COLUMN 2: RULES -->
+                <div>
+                    <h3 class="font-bold text-lg mb-3 text-purple-700">3. Logic Rules</h3>
+                    
+                    <ul class="list-disc list-inside text-sm text-gray-700 space-y-2">
+                        <li><strong>Aim Freedom:</strong> You can aim as high as you want (no cap).</li>
+                        <li><strong>No Sandbagging:</strong> You must aim at least to the level you have now.</li>
+                    </ul>
+
+                    <h3 class="font-bold text-lg mt-4 mb-3 text-red-700">4. Penalty Logic</h3>
+                    <p class="text-sm text-gray-600 mb-2">Only applied if you miss by 2 or more tiers.</p>
+                    
+                    <div class="p-3 bg-red-50 rounded border border-red-100 text-sm space-y-2">
+                        <p><strong>Rule:</strong><br>
+                        <code>If (RealTier - AimTier) >= 2</code></p>
+                        
+                        <p><strong>Calculation:</strong><br>
+                        <code>Penalty = (AimValue - RealValue) × Multiplier</code></p>
+                        <p><em>If you miss by just 1 Tier, the penalty is 0.</em></p>
+                    </div>
+
+                    <h3 class="font-bold text-lg mt-6 mb-3 text-gray-800">5. Profiles & Budgets</h3>
+                    <p class="text-sm text-gray-600 mb-2">How different athletes request funding. <span class="italic text-gray-500">(Note: These descriptions reflect the default strategic behaviors. Changing the budget ranges in the controls will alter these outcomes.)</span></p>
+                    
+                    <div class="space-y-3 text-sm">
+                        <div class="p-2 bg-blue-50 border-l-4 border-blue-500">
+                            <strong class="text-blue-700">Gambler:</strong> Inflates request randomly within the "Gambler Range". Disregards actual need.
+                        </div>
+                        <div class="p-2 bg-gray-100 border-l-4 border-gray-500">
+                            <strong class="text-gray-700">Conservative:</strong> Lowballs request within the "Conservative Range" to maximize safety. Disregards actual need.
+                        </div>
+                        <div class="p-2 bg-green-50 border-l-4 border-green-500">
+                            <strong class="text-green-700">Honest:</strong> Requests exactly what they need based on their Skill Level.
+                            <ul class="mt-1 text-xs text-gray-500 list-disc list-inside">
+                                <li><strong>Formula:</strong> <code>(Base_Need + Random_Var) * Honest_Cost_Mult</code></li>
+                                <li>The <strong>Honest Cost Mult</strong> slider allows you to test inflation (>1.0) or cost-saving (<1.0) scenarios for this group.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // --- CONSTANTS ---
+    const POINTS_MAP = {
+        '1': 26, '2': 21, '3': 16,
+        '4-8': 8, '9-16': 4, 'None': 0
+    };
+    
+    // ORIGINAL SCALING
+    const TIERS = {
+        1: {name: 'Tier 1 (Medal)',   val: 1.000}, 
+        2: {name: 'Tier 2 (Final)',   val: 0.975}, 
+        3: {name: 'Tier 3 (L2 Medal)',val: 0.950}, 
+        4: {name: 'Tier 4 (L2 Final)',val: 0.925}, 
+        5: {name: 'Tier 5 (Top 16)',  val: 0.900}, 
+        6: {name: 'Tier 6 (Floor)',   val: 0.875}, 
+        7: {name: 'Fail',             val: 0.00}
+    };
+
+    // --- MATH HELPERS ---
+    function randomNormal(mean, variance) {
+        let u = 0, v = 0;
+        while(u === 0) u = Math.random();
+        while(v === 0) v = Math.random();
+        return mean + Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v ) * variance; 
+    }
+    function randomGammaInt(k) {
+        let sum = 0.0;
+        for(let i=0; i<k; i++) sum += -Math.log(Math.random());
+        return sum;
+    }
+    function randomBeta(alpha, beta) {
+        const x = randomGammaInt(alpha);
+        const y = randomGammaInt(beta);
+        return x / (x + y);
+    }
+
+    // --- ATHLETE LOGIC ---
+    class Athlete {
+        constructor(id, settings, isNew = false) {
+            this.id = id;
+            this.isNew = isNew; // Tracks if this is a fresh replacement
+            this.skill = randomBeta(2, 5);
+            
+            // 1. Calculate a "Neutral/Honest" Budget based on Skill (Need)
+            // UPDATED: Now scaled by honestMult
+            if (this.skill > 0.8) {
+                // High skill: 0.5 - 2.0 * mult
+                this.budget_neutral = (0.5 + (Math.random() * 1.5)) * settings.honestMult; 
+            } else {
+                // Low skill: 0.3 - 1.3 * mult
+                this.budget_neutral = (0.3 + (Math.random() * 1.0)) * settings.honestMult; 
+            }
+
+            // 2. Assign Profile & Strategic Budget (Ask)
+            const r = Math.random();
+            const pGambler = settings.pctGambler / 100;
+            const pHonest = settings.pctHonest / 100;
+            
+            if (r < pGambler) {
+                this.profile = 'Gambler';
+                // Gamblers inflate: User Defined Range
+                let gMin = settings.gamblerMin;
+                let gMax = settings.gamblerMax;
+                this.budget_strategic = gMin + (Math.random() * (gMax - gMin)); 
+            } else if (r < pGambler + pHonest) {
+                this.profile = 'Honest';
+                this.budget_strategic = this.budget_neutral; // Honest asks for what they need
+            } else {
+                this.profile = 'Conservative';
+                // Conservative lowballs: User Defined Range
+                let cMin = settings.consMin;
+                let cMax = settings.consMax;
+                this.budget_strategic = cMin + (Math.random() * (cMax - cMin)); 
+            }
+
+            // State Holders
+            this.results_history = []; 
+            this.results_interim = []; 
+            this.cycle_1_performance_tier = 6;
+            this.past_best_tier = 6;
+            this.aim_tier = 6;
+            this.current_penalty = 0;
+            
+            // Data tracking for table
+            this.aim_c1 = 6;
+            this.aim_c2 = 6;
+        }
+
+        get_result(variance = 0.12) { 
+            const perf = randomNormal(this.skill, variance);
+            
+            if (perf > 0.96) return {pos:'1', lvl:1.5, tier:1};
+            if (perf > 0.92) return {pos:'2', lvl:1.5, tier:1};
+            if (perf > 0.88) return {pos:'3', lvl:1.5, tier:1};
+            if (perf > 0.78) return {pos:'4-8', lvl:1.5, tier:2};
+            if (perf > 0.68) return {pos:'3', lvl:1.0, tier:3};
+            if (perf > 0.58) return {pos:'4-8', lvl:1.0, tier:4};
+            if (perf > 0.45) return {pos:'9-16', lvl:1.5, tier:5};
+            if (perf > 0.15) return {pos:'9-16', lvl:1.0, tier:6};
+            return {pos:'None', lvl:0, tier:7};
+        }
+
+        // Skill Development
+        develop(probability, maxIncrease) {
+            if (Math.random() < probability) {
+                // Increase skill by a random amount up to maxIncrease
+                const boost = Math.random() * maxIncrease;
+                this.skill = Math.min(1.0, this.skill + boost);
+            }
+        }
+
+        // Phase 1: Generate Cycle 1 Data (Pre-System history)
+        generate_history() {
+            this.results_history = [];
+            for(let i=0; i<3; i++) this.results_history.push(this.get_result());
+            
+            // Determine "Reality" (Past Best)
+            let valid_tiers = this.results_history.filter(r => r.tier < 7).map(r => r.tier);
+            this.past_best_tier = valid_tiers.length > 0 ? Math.min(...valid_tiers) : 6;
+            
+            // Set Aim Strategy based on History
+            this.set_aim_strategy();
+            
+            this.aim_c1 = this.aim_tier; // Store for C1
+            this.aim_c2 = this.aim_tier; // Default for C2 (will be updated for survivors)
+        }
+
+        set_aim_strategy() {
+            if (this.profile === 'Gambler') {
+                this.aim_tier = 1; 
+            } else if (this.profile === 'Conservative') {
+                this.aim_tier = this.past_best_tier; 
+            } else {
+                // Honest: Best, Best+1, or Best+2
+                let improvement = Math.floor(Math.random() * 3); 
+                this.aim_tier = Math.max(1, this.past_best_tier - improvement);
+            }
+            // Sanity check: Can't aim WORSE than past best (Sandbagging rule)
+            if (this.aim_tier > this.past_best_tier) this.aim_tier = this.past_best_tier;
+        }
+
+        // Phase 2: Generate Cycle 2 Data (Interim/Fresh performance)
+        generate_interim() {
+            this.results_interim = [];
+            // Generate new results based on current skill (which might have developed)
+            for(let i=0; i<3; i++) this.results_interim.push(this.get_result());
+            
+            // Determine "Interim Performance" (Cycle 2 Reality)
+            let interim_tiers = this.results_interim.filter(r => r.tier < 7).map(r => r.tier);
+            this.cycle_1_performance_tier = interim_tiers.length > 0 ? Math.min(...interim_tiers) : 6;
+        }
+
+        // UPDATED: Pre-season prep for C2 (Chronologically Correct)
+        prepare_for_c2() {
+            // Note: In reality, athlete sets aim BEFORE competing in C2.
+            // So we re-roll the strategy based on the EXISTING past_best_tier (from C1).
+            // We do NOT peek at C2 results yet.
+            this.set_aim_strategy();
+            this.aim_c2 = this.aim_tier; // Store actual aim used for C2
+        }
+
+        // Helper to init everything for new generation
+        generate_all_data() {
+            this.generate_history();
+            this.generate_interim();
+        }
+
+        // Phase 2: Calculate Score based on settings (Scaled vs NoScale)
+        calculate_score(cycle_num, settings, useScaling = true) {
+            
+            // A. Base Points
+            let dataset = (cycle_num === 1) ? this.results_history : this.results_interim; 
+            let scores = dataset.map(r => (POINTS_MAP[r.pos] || 0) * r.lvl);
+            scores.sort((a,b) => b - a);
+            let base_points = scores.reduce((a,b) => a+b, 0);
+
+            // B. Variables based on scenario
+            let current_budget_req;
+            let aim_scaler = 1.0;
+            let penalty_factor = 1.0;
+
+            if (useScaling) {
+                // STRATEGIC MODE (Profiles exist)
+                current_budget_req = this.budget_strategic;
+                
+                // Use the correct aim for the correct cycle
+                let aim_t = (cycle_num === 1) ? this.aim_c1 : this.aim_c2;
+                
+                aim_scaler = TIERS[aim_t] ? TIERS[aim_t].val : TIERS[6].val;
+
+                // Penalty (Cycle 2 Only)
+                if (cycle_num === 2) {
+                    // New athletes come fresh, no penalty history
+                    if (!this.isNew) {
+                        let real_t = this.cycle_1_performance_tier;
+                        let gap = real_t - aim_t;
+                        
+                        if (gap >= 2) {
+                            let val_aim = TIERS[aim_t] ? TIERS[aim_t].val : TIERS[6].val;
+                            let val_real = TIERS[real_t] ? TIERS[real_t].val : TIERS[6].val;
+                            let diff_val = val_aim - val_real;
+                            let total_penalty = diff_val * settings.penaltyMult;
+                            penalty_factor = Math.max(0, 1.0 - total_penalty);
+                        }
+                    }
+                }
+                this.current_penalty = 1.0 - penalty_factor;
+
+            } else {
+                // CONTROL MODE (Meritocracy - No profiles)
+                current_budget_req = this.budget_neutral; // Use honest skill-based budget
+                aim_scaler = 1.0; // No aim benefit
+                penalty_factor = 1.0; // No penalty
+            }
+
+            // C. Budget Scaler (Always active, but input differs)
+            let budget_scaler = (current_budget_req <= 0.5) ? 1.0 : (1.1 - (0.2 * current_budget_req));
+
+            let final = base_points * budget_scaler * aim_scaler * penalty_factor;
+            return Math.max(0, final);
+        }
+    }
+
+    // --- MAIN LOOP ---
+    function runSimulation() {
+        const btn = document.getElementById('runBtn');
+        const status = document.getElementById('statusMsg');
+        const numIter = parseInt(document.getElementById('numIterations').value) || 1000;
+        
+        btn.disabled = true;
+        btn.classList.add('opacity-50');
+        status.innerText = `Running ${numIter.toLocaleString()} Iterations...`;
+
+        setTimeout(() => {
+            const start = performance.now();
+            executeMonteCarlo(numIter);
+            const end = performance.now();
+            btn.disabled = false;
+            btn.classList.remove('opacity-50');
+            status.innerText = `Done: ${numIter} runs in ${(end - start).toFixed(0)}ms`;
+        }, 50);
+    }
+
+    function executeMonteCarlo(iterations) {
+        const settings = {
+            numAthletes: parseInt(document.getElementById('numAthletes').value),
+            pctGambler: parseInt(document.getElementById('pctGambler').value),
+            pctHonest: parseInt(document.getElementById('pctHonest').value),
+            penaltyMult: parseFloat(document.getElementById('penaltyMult').value),
+            turnoverPct: parseInt(document.getElementById('turnoverPct').value) / 100,
+            devProb: parseInt(document.getElementById('devProb').value) / 100,
+            maxSkillBoost: parseFloat(document.getElementById('maxSkillBoost').value),
+            
+            // New Budget Settings
+            gamblerMin: parseFloat(document.getElementById('gamblerMin').value),
+            gamblerMax: parseFloat(document.getElementById('gamblerMax').value),
+            consMin: parseFloat(document.getElementById('consMin').value),
+            consMax: parseFloat(document.getElementById('consMax').value),
+            honestMult: parseFloat(document.getElementById('honestMult').value)
+        };
+        const totalBudget = 100.0;
+        const compareMode = document.getElementById('showComparison').checked;
+
+        // Stats Structure
+        let initStat = () => ({ 
+            pop:0, c1:0, c2:0, drop:0, quit: 0, penaltySum:0, survCount:0,
+            sumSkillSurv: 0, sumTierSurv: 0, countSurv: 0,
+            sumSkillDrop: 0, sumTierDrop: 0, countDrop: 0
+        });
+        let stats = {
+            'Gambler': initStat(),
+            'Honest': initStat(),
+            'Conservative': initStat()
+        };
+
+        // System Stats Holders
+        let sysC1 = { sum:0, min:9999, max:0, sumCutoff:0, sumSpent:0 };
+        let sysC2 = { sum:0, min:9999, max:0, sumCutoff:0, sumSpent:0 };
+        
+        // Control Stats Holders
+        let sysC1_ctrl = { sum:0, min:9999, max:0, sumCutoff:0, sumSpent:0 };
+        let sysC2_ctrl = { sum:0, min:9999, max:0, sumCutoff:0, sumSpent:0 };
+
+        let globalId = 0;
+        let lastRunDetails = []; 
+        let globalTotalTurnover = 0;
+        let globalFundedQuit = 0;
+
+        for(let i=0; i<iterations; i++) {
+            // 1. Generate Initial Population
+            let athletes = [];
+            for(let j=0; j<settings.numAthletes; j++) {
+                let a = new Athlete(globalId++, settings);
+                a.generate_all_data(); 
+                athletes.push(a);
+                stats[a.profile].pop++;
+            }
+
+            // --- C1: STANDARD SCALING ---
+            // Note: Sort order here is primarily for determining who gets funded, 
+            // but we need to map scores to IDs for weighted quitting.
+            let c1_data = athletes.map(a => ({ id: a.id, score: a.calculate_score(1, settings, true), budget: a.budget_strategic, profile: a.profile }));
+            c1_data.sort((a,b) => b.score - a.score);
+
+            let spent = 0, fundedC1 = new Set(), cutoffC1 = 0;
+            for(let a of c1_data) {
+                if (spent + a.budget <= totalBudget) {
+                    spent += a.budget;
+                    fundedC1.add(a.id);
+                    cutoffC1 = a.score;
+                } else break;
+            }
+            sysC1.sum += fundedC1.size;
+            sysC1.min = Math.min(sysC1.min, fundedC1.size);
+            sysC1.max = Math.max(sysC1.max, fundedC1.size);
+            sysC1.sumCutoff += cutoffC1;
+            sysC1.sumSpent += spent;
+
+            // --- TRANSITION: WEIGHTED QUITTING ---
+            let numToQuit = Math.floor(settings.numAthletes * settings.turnoverPct);
+            globalTotalTurnover += numToQuit;
+
+            // Build weighted pool (Poor score = High weight)
+            let weightedPool = c1_data.map(d => ({
+                id: d.id,
+                weight: 100 / (d.score + 15.0)
+            }));
+            
+            // Select quitters with Failsafe
+            let quitterIds = new Set();
+            // Safety counter to prevent infinite loop
+            let attempts = 0;
+            
+            while(quitterIds.size < numToQuit && attempts < numToQuit * 5) {
+                let totalWeight = weightedPool.reduce((sum, item) => sum + item.weight, 0);
+                if (totalWeight <= 0) break; // Should not happen given weight formula
+
+                let r = Math.random() * totalWeight;
+                let running = 0;
+                for(let idx=0; idx < weightedPool.length; idx++) {
+                    running += weightedPool[idx].weight;
+                    if(r < running) {
+                        quitterIds.add(weightedPool[idx].id);
+                        weightedPool.splice(idx, 1); 
+                        break;
+                    }
+                }
+                attempts++;
+            }
+            
+            // Failsafe: If random selection failed to fill quota (rare), fill from WORST
+            while(quitterIds.size < numToQuit && weightedPool.length > 0) {
+                 // weightedPool is based on c1_data which is sorted DESC (Best to Worst).
+                 // So we take from the end (Worst) to be consistent with "performance quitting"
+                 let worst = weightedPool.pop();
+                 quitterIds.add(worst.id);
+            }
+
+
+            // Split Population
+            let survivors = [];
+            athletes.forEach(a => {
+                if(!quitterIds.has(a.id)) {
+                    survivors.push(a);
+                }
+            });
+
+            // --- ADD NEW ATHLETES ---
+            let newAthletes = [];
+            for(let k=0; k<numToQuit; k++) {
+                let a = new Athlete(globalId++, settings, true); 
+                a.generate_all_data();
+                // Note: new athletes set aim_c1 in constructor but we don't use it.
+                // They set aim_c2 in generate_history too.
+                newAthletes.push(a);
+                stats[a.profile].pop++; 
+            }
+
+            // --- DEVELOP SURVIVORS & UPDATE AIM (FIXED ORDER) ---
+            survivors.forEach(a => {
+                a.develop(settings.devProb, settings.maxSkillBoost); // 1. Get Better
+                a.prepare_for_c2(); // 2. Set Aim based on C1 history (before seeing C2 result)
+                a.generate_interim(); // 3. Compete in C2
+            });
+
+            // Combine for C2 Pool
+            let c2_pool = [...survivors, ...newAthletes];
+
+            // --- C2: STANDARD SCALING ---
+            // Note: calculate_score(2) uses aim_c2
+            let c2_data = c2_pool.map(a => ({ id: a.id, score: a.calculate_score(2, settings, true), budget: a.budget_strategic }));
+            c2_data.sort((a,b) => b.score - a.score);
+
+            spent = 0; let fundedC2 = new Set(), cutoffC2 = 0;
+            for(let a of c2_data) {
+                if (spent + a.budget <= totalBudget) {
+                    spent += a.budget;
+                    fundedC2.add(a.id);
+                    cutoffC2 = a.score;
+                } else break;
+            }
+            sysC2.sum += fundedC2.size;
+            sysC2.min = Math.min(sysC2.min, fundedC2.size);
+            sysC2.max = Math.max(sysC2.max, fundedC2.size);
+            sysC2.sumCutoff += cutoffC2;
+            sysC2.sumSpent += spent;
+
+            // --- CAPTURE LAST RUN DATA ---
+            if (i === iterations - 1) {
+                let rankC1 = {};
+                c1_data.forEach((item, idx) => rankC1[item.id] = idx + 1);
+                let rankC2 = {};
+                c2_data.forEach((item, idx) => rankC2[item.id] = idx + 1);
+
+                // 1. Original Athletes
+                athletes.forEach((a) => {
+                    let isQuitter = quitterIds.has(a.id);
+                    let c1_info = c1_data.find(x => x.id === a.id);
+                    let c2_info = !isQuitter ? c2_data.find(x => x.id === a.id) : null;
+                    
+                    lastRunDetails.push({
+                        id: a.id,
+                        profile: a.profile,
+                        skill: a.skill,
+                        budget: a.budget_strategic,
+                        rankC1: rankC1[a.id],
+                        aimC1: a.aim_c1, // Correctly show C1 aim
+                        scoreC1: c1_info ? c1_info.score : 0,
+                        fundedC1: fundedC1.has(a.id),
+                        realizedTierC1: a.cycle_1_performance_tier, 
+                        aimC2: isQuitter ? '-' : a.aim_c2, // Correctly show C2 aim
+                        penalty: a.current_penalty,
+                        scoreC2: c2_info ? c2_info.score : null,
+                        fundedC2: fundedC2.has(a.id),
+                        rankC2: isQuitter ? 9999 : rankC2[a.id], 
+                        isNew: false,
+                        isQuitter: isQuitter
+                    });
+                });
+
+                // 2. New Athletes
+                newAthletes.forEach(a => {
+                    let c2_info = c2_data.find(x => x.id === a.id);
+                    lastRunDetails.push({
+                        id: a.id,
+                        profile: a.profile,
+                        skill: a.skill,
+                        budget: a.budget_strategic,
+                        rankC1: null,
+                        aimC1: null,
+                        scoreC1: null,
+                        fundedC1: false,
+                        realizedTierC1: a.cycle_1_performance_tier,
+                        aimC2: a.aim_c2,
+                        penalty: 0,
+                        scoreC2: c2_info ? c2_info.score : 0,
+                        fundedC2: fundedC2.has(a.id),
+                        rankC2: rankC2[a.id],
+                        isNew: true,
+                        isQuitter: false
+                    });
+                });
+            }
+
+            // --- CONTROL MODE ---
+            if (compareMode) {
+                let c1_ctrl_data = athletes.map(a => ({ id: a.id, score: a.calculate_score(1, settings, false), budget: a.budget_neutral }));
+                c1_ctrl_data.sort((a,b) => b.score - a.score);
+                let spent_c = 0, count_c = 0, cut_c = 0;
+                for(let a of c1_ctrl_data) {
+                    if (spent_c + a.budget <= totalBudget) {
+                        spent_c += a.budget;
+                        count_c++;
+                        cut_c = a.score;
+                    } else break;
+                }
+                sysC1_ctrl.sum += count_c;
+                sysC1_ctrl.min = Math.min(sysC1_ctrl.min, count_c);
+                sysC1_ctrl.max = Math.max(sysC1_ctrl.max, count_c);
+                sysC1_ctrl.sumCutoff += cut_c;
+
+                let c2_ctrl_data = c2_pool.map(a => ({ id: a.id, score: a.calculate_score(2, settings, false), budget: a.budget_neutral }));
+                c2_ctrl_data.sort((a,b) => b.score - a.score);
+                spent_c = 0; count_c = 0; cut_c = 0;
+                for(let a of c2_ctrl_data) {
+                    if (spent_c + a.budget <= totalBudget) {
+                        spent_c += a.budget;
+                        count_c++;
+                        cut_c = a.score;
+                    } else break;
+                }
+                sysC2_ctrl.sum += count_c;
+                sysC2_ctrl.min = Math.min(sysC2_ctrl.min, count_c);
+                sysC2_ctrl.max = Math.max(sysC2_ctrl.max, count_c);
+                sysC2_ctrl.sumCutoff += cut_c;
+            }
+
+            // --- AGGREGATE STATS ---
+            athletes.forEach((a) => {
+                let p = a.profile;
+                let s = stats[p];
+                let inC1 = fundedC1.has(a.id);
+                
+                if (inC1) {
+                    s.c1++;
+                    if (quitterIds.has(a.id)) {
+                        s.quit++;
+                        globalFundedQuit++;
+                    } else {
+                        if (fundedC2.has(a.id)) {
+                            s.c2++; 
+                            s.survCount++;
+                            s.penaltySum += a.current_penalty;
+                            s.sumSkillSurv += a.skill;
+                            s.sumTierSurv += a.cycle_1_performance_tier; 
+                            s.countSurv++;
+                        } else {
+                            s.drop++; 
+                            s.sumSkillDrop += a.skill;
+                            s.sumTierDrop += a.past_best_tier; 
+                            s.countDrop++;
+                        }
+                    }
+                } 
+            });
+
+            newAthletes.forEach(a => {
+                let p = a.profile;
+                let s = stats[p];
+                if (fundedC2.has(a.id)) {
+                    s.c2++; 
+                }
+            });
+        }
+
+        // Add Summary Info to UI
+        let avgTotalQuit = globalTotalTurnover / iterations;
+        let avgFundedQuit = globalFundedQuit / iterations;
+        let avgUnfundedQuit = avgTotalQuit - avgFundedQuit;
+        let summaryText = `Avg Turnover: <b>${avgTotalQuit.toFixed(1)}</b> total athletes (<b>${avgFundedQuit.toFixed(1)}</b> funded in C1, <span class="text-gray-400">${avgUnfundedQuit.toFixed(1)} unfunded</span>).`;
+        document.getElementById('turnoverSummary').innerHTML = summaryText;
+
+        updateUI(sysC1, sysC2, sysC1_ctrl, sysC2_ctrl, stats, iterations, compareMode);
+        renderDetailedTable(lastRunDetails);
+    }
+
+    // --- UI UPDATES ---
+    function getContext(score) {
+        if (score >= 26) return ">= 1x Gold";
+        if (score >= 21) return ">= 1x Silver";
+        if (score >= 16) return ">= 1x Bronze";
+        if (score >= 12) return ">= 1x Top 8 + 1x Top 16";
+        if (score >= 8)  return ">= 1x Top 8 or 2x Top 16";
+        if (score >= 4)  return ">= 1x Top 16";
+        return "Participation";
+    }
+
+    function updateBadge(el, spentPct) {
+        el.innerText = spentPct.toFixed(1) + "% Budget";
+        el.className = spentPct >= 99.9 ? "px-2 py-1 text-xs font-bold rounded bg-red-100 text-red-700" : "px-2 py-1 text-xs font-bold rounded bg-green-100 text-green-700";
+    }
+
+    function updateUI(c1, c2, c1c, c2c, stats, n, compareMode) {
+        // --- SUMMARY CARDS (Top Boxes) ---
+        const fmt = (val, ctrl) => compareMode ? 
+            `${val.toFixed(1)} <span class="text-sm text-gray-400 font-normal ml-1">(vs ${ctrl.toFixed(1)})</span>` : 
+            val.toFixed(1);
+        
+        const fmtRange = (min, max, cMin, cMax) => compareMode ?
+            `${min}-${max} <span class="text-gray-400 font-normal ml-1">(vs ${cMin}-${cMax})</span>` :
+            `${min} - ${max}`;
+
+        // Cycle 1
+        document.getElementById('c1_funded').innerHTML = fmt(c1.sum / n, c1c.sum / n);
+        document.getElementById('c1_cutoff').innerHTML = fmt(c1.sumCutoff / n, c1c.sumCutoff / n);
+        document.getElementById('c1_range').innerHTML = fmtRange(c1.min, c1.max, c1c.min, c1c.max);
+        document.getElementById('c1_context').innerText = getContext(c1.sumCutoff / n);
+        updateBadge(document.getElementById('c1_budget_badge'), c1.sumSpent / n);
+
+        // Cycle 2
+        document.getElementById('c2_funded').innerHTML = fmt(c2.sum / n, c2c.sum / n);
+        document.getElementById('c2_cutoff').innerHTML = fmt(c2.sumCutoff / n, c2c.sumCutoff / n);
+        document.getElementById('c2_range').innerHTML = fmtRange(c2.min, c2.max, c2c.min, c2c.max);
+        document.getElementById('c2_context').innerText = getContext(c2.sumCutoff / n);
+        updateBadge(document.getElementById('c2_budget_badge'), c2.sumSpent / n);
+
+        // --- TABLES & CHARTS ---
+        const tbody = document.getElementById('profileTableBody');
+        const qbody = document.getElementById('qualityTableBody');
+        tbody.innerHTML = '';
+        qbody.innerHTML = '';
+
+        const profiles = ['Gambler', 'Honest', 'Conservative'];
+        let chartData = [];
+
+        profiles.forEach(p => {
+            let d = stats[p];
+            let avgC1 = d.c1 / n;
+            let avgQuit = d.quit / n;
+            let avgDrop = d.drop / n;
+            let avgC2 = d.c2 / n; // Total C2 funded
+            
+            // Fixed Survival Rate: Survivors / (Funded C1 - Quitters)
+            let denominator = (d.c1 - d.quit);
+            let survRate = denominator > 0 ? (d.survCount / denominator) * 100 : 0;
+            
+            let avgPen = d.c1 > 0 ? (d.penaltySum / d.c1) * 100 : 0;
+
+            chartData.push({ c1: avgC1, c2: avgC2, quit: avgQuit, surv: survRate, pen: avgPen });
+
+            tbody.innerHTML += `
+                <tr class="bg-white border-b hover:bg-gray-50">
+                    <td class="px-6 py-4 font-medium text-gray-900">${p}</td>
+                    <td class="px-6 py-4 text-right text-blue-600 font-semibold">${avgC1.toFixed(1)}</td>
+                    <td class="px-6 py-4 text-right text-yellow-600">${avgQuit.toFixed(1)}</td>
+                    <td class="px-6 py-4 text-right text-red-500">${avgDrop.toFixed(1)}</td>
+                    <td class="px-6 py-4 text-right text-purple-600 font-semibold">${avgC2.toFixed(1)}</td>
+                    <td class="px-6 py-4 text-right font-bold">${survRate.toFixed(1)}%</td>
+                    <td class="px-6 py-4 text-right">${avgPen.toFixed(1)}%</td>
+                </tr>`;
+            
+            let avgTierSurv = d.countSurv > 0 ? (d.sumTierSurv / d.countSurv).toFixed(2) : "-";
+            let avgSkillSurv = d.countSurv > 0 ? (d.sumSkillSurv / d.countSurv).toFixed(2) : "-";
+            let avgTierDrop = d.countDrop > 0 ? (d.sumTierDrop / d.countDrop).toFixed(2) : "-";
+            let avgSkillDrop = d.countDrop > 0 ? (d.sumSkillDrop / d.countDrop).toFixed(2) : "-";
+
+            qbody.innerHTML += `
+                <tr class="bg-white border-b hover:bg-gray-50">
+                    <td class="px-6 py-4 font-medium text-gray-900">${p}</td>
+                    <td class="px-6 py-4 text-right font-bold text-green-600">${avgTierSurv}</td>
+                    <td class="px-6 py-4 text-right">${avgSkillSurv}</td>
+                    <td class="px-6 py-4 text-right text-red-400">${avgTierDrop}</td>
+                    <td class="px-6 py-4 text-right">${avgSkillDrop}</td>
+                </tr>`;
+        });
+
+        updateCharts(profiles, chartData);
+    }
+
+    function renderDetailedTable(data) {
+        const tbody = document.getElementById('athleteListBody');
+        tbody.innerHTML = '';
+        
+        data.sort((a, b) => {
+            return (a.rankC2 || 9999) - (b.rankC2 || 9999);
+        });
+
+        data.forEach((row, index) => {
+            let rowClass = "border-b hover:bg-gray-50";
+            let statusText = "";
+            let rankChange = "";
+
+            if (row.fundedC2 && (!data[index + 1] || !data[index + 1].fundedC2)) {
+                rowClass += " border-b-4 border-gray-800";
+            }
+
+            if (row.isNew) {
+                statusText = '<span class="badge-new">NEW</span>';
+                rankChange = '<span class="text-gray-400 text-[10px]">N/A</span>';
+            } else if (row.isQuitter) {
+                rowClass = "border-b bg-yellow-50 hover:bg-yellow-100"; 
+                statusText = '<span class="badge-quit">QUIT</span>';
+                rankChange = '<span class="text-gray-400 text-[10px]">N/A</span>';
+            } else if (row.fundedC1 && !row.fundedC2) {
+                // Dropout
+                rowClass = "border-b bg-red-50 hover:bg-red-100";
+                let change = row.rankC1 - row.rankC2;
+                rankChange = change > 0 
+                    ? `<span class="text-green-600 font-bold">+${change}</span>` 
+                    : `<span class="text-red-600 font-bold">${change}</span>`;
+            } else {
+                if (row.fundedC1 && row.fundedC2) {
+                    rowClass = "border-b bg-green-50 hover:bg-green-100";
+                    if (row.fundedC2 && (!data[index + 1] || !data[index + 1].fundedC2)) {
+                        rowClass += " border-b-4 border-gray-800";
+                    }
+                }
+                if (row.rankC1 && row.rankC2) {
+                    let change = row.rankC1 - row.rankC2;
+                    rankChange = change > 0 
+                        ? `<span class="text-green-600 font-bold">+${change}</span>` 
+                        : (change < 0 ? `<span class="text-red-600 font-bold">${change}</span>` : `<span class="text-gray-400">-</span>`);
+                } else {
+                     rankChange = '<span class="text-gray-400 text-[10px]">N/A</span>';
+                }
+            }
+
+            let penDisplay = row.penalty > 0 ? `<span class="text-red-600 font-bold">${(row.penalty * 100).toFixed(1)}%</span>` : '<span class="text-gray-300">0.0%</span>';
+            let tierDisplay = row.realizedTierC1;
+            if (row.isNew) tierDisplay = `<span class="text-blue-500">${row.realizedTierC1}</span>`;
+
+            tbody.innerHTML += `
+                <tr class="${rowClass}">
+                    <td class="px-4 py-2 font-mono text-gray-500 text-[10px]">${row.id}</td>
+                    <td class="px-4 py-2 font-medium text-gray-800">${row.profile} ${statusText}</td>
+                    <td class="px-4 py-2 text-right text-gray-600">${row.skill.toFixed(2)}</td>
+                    <td class="px-4 py-2 text-right text-gray-600">${row.budget.toFixed(2)}</td>
+                    <td class="px-4 py-2 text-right border-l font-mono ${row.fundedC1 ? 'font-bold text-gray-800' : 'text-gray-400'}">${row.rankC1 || '-'}</td>
+                    <td class="px-4 py-2 text-right text-gray-600">${row.aimC1 || '-'}</td>
+                    <td class="px-4 py-2 text-right text-gray-600">${row.scoreC1 ? row.scoreC1.toFixed(1) : '-'}</td>
+                    <td class="px-4 py-2 text-center text-[10px] font-bold ${row.fundedC1 ? 'text-blue-600' : 'text-gray-300'}">${row.fundedC1 ? 'YES' : 'NO'}</td>
+                    <td class="px-4 py-2 text-right border-l font-mono text-gray-800">${tierDisplay}</td>
+                    <td class="px-4 py-2 text-right font-mono text-xs text-blue-600">${row.aimC2 || '-'}</td>
+                    <td class="px-4 py-2 text-right font-mono text-xs">${penDisplay}</td>
+                    <td class="px-4 py-2 text-right border-l font-mono font-semibold ${row.fundedC2 ? 'text-gray-900' : 'text-gray-400'}">${row.scoreC2 ? row.scoreC2.toFixed(1) : '-'}</td>
+                    <td class="px-4 py-2 text-center text-[10px] font-bold ${row.fundedC2 ? 'text-purple-600' : 'text-gray-300'}">${row.fundedC2 ? 'YES' : 'NO'}</td>
+                    <td class="px-4 py-2 text-right font-mono ${row.fundedC2 ? 'font-bold text-gray-900' : 'text-gray-400'}">${row.rankC2 === 9999 ? '-' : row.rankC2}</td>
+                    <td class="px-4 py-2 text-right font-mono text-xs">${rankChange}</td>
+                </tr>
+            `;
+        });
+    }
+
+    // --- CHARTS ---
+    let fundingChart = null, survivalChart = null;
+
+    function updateCharts(labels, data) {
+        // Funding Chart
+        const ctx1 = document.getElementById('fundingChart').getContext('2d');
+        if(fundingChart) fundingChart.destroy();
+        
+        fundingChart = new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Funded C1', data: data.map(d => d.c1), backgroundColor: '#3b82f6' },
+                    { label: 'Voluntary Quit', data: data.map(d => d.quit), backgroundColor: '#fbbf24' },
+                    { label: 'Funded C2 (Total)', data: data.map(d => d.c2), backgroundColor: '#a855f7' }
+                ]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        });
+
+        // Survival Chart
+        const ctx2 = document.getElementById('survivalChart').getContext('2d');
+        if(survivalChart) survivalChart.destroy();
+        
+        survivalChart = new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'True Survival % (Excl. Quits)', data: data.map(d => d.surv), backgroundColor: '#22c55e', yAxisID: 'y' },
+                    { label: 'Avg Penalty %', data: data.map(d => d.pen), backgroundColor: '#ef4444', yAxisID: 'y1' }
+                ]
+            },
+            options: { 
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true, max: 100, position: 'left' },
+                    y1: { beginAtZero: true, max: 50, position: 'right', grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+    }
+
+    // --- SLIDERS ---
+    const sGambler = document.getElementById('pctGambler');
+    const sHonest = document.getElementById('pctHonest');
+    const sTurnover = document.getElementById('turnoverPct');
+    const sDev = document.getElementById('devProb');
+    const sHonestMult = document.getElementById('honestMult');
+    
+    const dGambler = document.getElementById('valGambler');
+    const dHonest = document.getElementById('valHonest');
+    const dCons = document.getElementById('valConservative');
+    const dTurnover = document.getElementById('valTurnover');
+    const dDev = document.getElementById('valDev');
+    const dHonestMult = document.getElementById('valHonestMult');
+
+    function updateSliders() {
+        let g = parseInt(sGambler.value);
+        let h = parseInt(sHonest.value);
+        if (g + h > 100) { h = 100 - g; sHonest.value = h; }
+        let c = 100 - g - h;
+        dGambler.innerText = g + '%';
+        dHonest.innerText = h + '%';
+        dCons.innerText = c + '%';
+        
+        // New Sliders
+        dTurnover.innerText = sTurnover.value + '%';
+        dDev.innerText = sDev.value + '%';
+        dHonestMult.innerText = sHonestMult.value + 'x';
+    }
+
+    sGambler.addEventListener('input', updateSliders);
+    sHonest.addEventListener('input', updateSliders);
+    sTurnover.addEventListener('input', updateSliders);
+    sDev.addEventListener('input', updateSliders);
+    sHonestMult.addEventListener('input', updateSliders);
+
+    // Init
+    updateSliders();
+    runSimulation();
+
+</script>
+</body>
+</html>
