@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Huippu-urheilun Hyötyfunktiosimulaattori 3.0</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Plotly.js - Vakaa versio -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.1/plotly.min.js"></script>
+    <!-- Lucide ikonit -->
+    <script src="https://unpkg.com/lucide@0.263.1/dist/umd/lucide.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; }
+        .card { background: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); padding: 1.5rem; border: 1px solid #e2e8f0; }
+        
+        /* Matemaattinen tyylittely */
+        .math-block {
+            font-family: 'Times New Roman', serif;
+            font-size: 1.1rem;
+            text-align: center;
+            background: #f1f5f9;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #cbd5e1;
+            margin-top: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .fraction {
+            display: inline-block;
+            vertical-align: middle; 
+            text-align: center;
+        }
+        .fraction > span { display: block; }
+        .fraction span.top { border-bottom: 1px solid #000; padding-bottom: 1px; }
+        .math-var { font-style: italic; font-weight: bold; color: #2563eb; }
+        .math-text { font-family: 'Inter', sans-serif; font-size: 0.9rem; color: #475569; font-style: normal; }
+        
+        /* Input tyylit */
+        input[type=range] { accent-color: #2563eb; }
+        
+        /* Selityslaatikot */
+        .explanation-box {
+            border-left: 3px solid #3b82f6;
+            padding-left: 1rem;
+            margin-bottom: 2rem;
+        }
+        .explanation-title {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        /* Taulukkotyylit */
+        .strat-row { border-bottom: 1px solid #e2e8f0; padding: 8px 0; font-size: 0.9rem; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-slate-900">Huippu-urheilun Rahoitusmalli</h1>
+            <p class="text-slate-500 mt-2">Strateginen optimointi ja hyötyfunktioanalyysi</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- VASEN PALKKI: KONTROLLIT -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Syötteet -->
+                <div class="card border-l-4 border-blue-600">
+                    <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-slate-800">
+                        <i data-lucide="settings-2" class="w-5 h-5 text-blue-600"></i> Muuttujat
+                    </h2>
+                    
+                    <!-- Budjettiasetukset -->
+                    <div class="mb-5 bg-slate-50 p-3 rounded border border-slate-100">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-3">Budjettiasetukset</label>
+                        
+                        <!-- Kokonaisbudjetti -->
+                        <div class="mb-3">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Jaettava Kokonaisbudjetti (€)</label>
+                            <div class="relative">
+                                <input type="number" id="input-total-budget" value="5700000" step="100000" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none font-mono text-right pr-8">
+                                <span class="absolute right-3 top-2 text-slate-400">€</span>
+                            </div>
+                        </div>
+
+                        <!-- Minimibudjetti -->
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Pienin haettava summa (€)</label>
+                            <div class="relative">
+                                <input type="number" id="input-min-budget" value="24000" step="1000" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none font-mono text-right pr-8">
+                                <span class="absolute right-3 top-2 text-slate-400">€</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 mt-1">Summat alle tämän ovat kiellettyjä.</p>
+                        </div>
+                    </div>
+
+                    <!-- 1. Raakapisteet (NUMEROKENTTÄ) -->
+                    <div class="mb-5">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-sm font-semibold text-slate-700">Omat Raakapisteet</label>
+                        </div>
+                        <div class="relative">
+                             <input type="number" id="input-score" min="1" max="100" value="15" step="0.1" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-lg font-bold text-blue-600">
+                             <div class="absolute right-3 top-3 text-slate-400 text-sm font-normal">pistettä</div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-2">Summa: 3 parasta tulosta (Sijoitus &times; Taso &times; Tuoreus)</p>
+                    </div>
+
+                    <!-- 2. Alitavoittelukielto -->
+                    <div class="mb-5">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Edellinen paras tulos:</label>
+                        <select id="input-prev-best" class="w-full p-2 border border-slate-300 rounded bg-white text-sm">
+                            <option value="1">Luokka 1: Mitali (Taso 1)</option>
+                            <option value="2">Luokka 2: T8 (Taso 1)</option>
+                            <option value="3">Luokka 3: Mitali (Taso 2)</option>
+                            <option value="4">Luokka 4: Finaali (Taso 2)</option>
+                            <option value="5">Luokka 5: T16 (Taso 1)</option>
+                            <option value="6" selected>Luokka 6: T16 (Taso 2)</option>
+                        </select>
+                        <div class="text-xs text-orange-600 mt-1 bg-orange-50 p-2 rounded border border-orange-100">
+                            <strong>Sääntö:</strong> Tavoite ei voi olla matalampi kuin aiempi tulos.
+                        </div>
+                    </div>
+
+                    <!-- 3. Karsintaraja -->
+                    <div class="mb-2 pt-4 border-t border-slate-100">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-sm font-semibold text-slate-700">Arvioitu karsintaraja</label>
+                            <span id="val-cutoff" class="font-bold text-slate-800 text-lg bg-slate-100 px-2 rounded">12</span>
+                        </div>
+                        <input type="range" id="input-cutoff" min="5" max="30" value="12" step="0.5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                        <p class="text-xs text-slate-500 mt-1">Pistemäärä, jolla viimeinen urheilija mahtuu budjettiin.</p>
+                    </div>
+
+                    <!-- UPDATE BUTTON -->
+                    <button id="btn-update" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95">
+                        <i data-lucide="refresh-cw" class="w-5 h-5"></i> Päivitä kuvaajat
+                    </button>
+                </div>
+
+                <!-- TULOSLAATIKKO -->
+                <div class="card bg-slate-900 text-white shadow-xl ring-1 ring-white/10">
+                    <h3 class="text-lg font-bold mb-4 flex items-center gap-2 text-green-400">
+                        <i data-lucide="target" class="w-5 h-5"></i> Optimaalinen Strategia
+                    </h3>
+                    <div id="optimization-result" class="space-y-4 text-sm">
+                        Paina "Päivitä kuvaajat" nähdäksesi tulokset.
+                    </div>
+                </div>
+
+                <!-- SELITYKSET -->
+                <div class="card bg-white border border-slate-200">
+                    <details>
+                        <summary class="cursor-pointer font-bold text-slate-700 text-sm flex items-center gap-2 hover:text-blue-600 transition-colors">
+                            <i data-lucide="book-open" class="w-4 h-4 text-blue-600"></i> Selitykset ja Kaavat
+                        </summary>
+                        <div class="mt-4 space-y-6 text-sm text-slate-600">
+                            
+                            <!-- 1. Nettohyöty -->
+                            <div class="explanation-box">
+                                <span class="explanation-title">1. Nettohyöty (Päätösluku)</span>
+                                <p class="text-xs leading-relaxed mb-2">
+                                    Tämä luku kertoo, kannattaako riski ottaa. Se ottaa huomioon, että rahaa ei välttämättä saa, ja että tulevaisuudessa voi tulla sakkoja.
+                                </p>
+                                <div class="math-block">
+                                    <span class="math-text">Nettohyöty</span> = (<span class="math-var">Tuki</span> &times; <span class="math-var">P</span>) &minus; <span class="math-text">Tulevaisuuden Riski</span>
+                                </div>
+                            </div>
+
+                            <!-- 2. Todennäköisyys (P) -->
+                            <div class="explanation-box">
+                                <span class="explanation-title">2. Läpipääsyn todennäköisyys (P)</span>
+                                
+                                <div class="mb-4 bg-slate-50 p-3 rounded">
+                                    <strong class="text-slate-800 text-xs block mb-2">Liikennevalot (Nyrkkisääntö):</strong>
+                                    <ul class="space-y-2 text-xs">
+                                        <li class="flex items-start gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-green-500 mt-1 flex-shrink-0"></span> 
+                                            <div>
+                                                <strong>Ainakin 1,0 pistettä yli rajan:</strong><br>
+                                                Olet turvassa (Todennäköisyys > 95%). Pieni heittely ei pudota sinua.
+                                            </div>
+                                        </li>
+                                        <li class="flex items-start gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-yellow-400 mt-1 flex-shrink-0"></span> 
+                                            <div>
+                                                <strong>0,1 – 0,9 pistettä yli rajan:</strong><br>
+                                                Olet epävarmalla alueella (50–90%). Olet teknisesti "sisällä", mutta pienikin muutos muiden pisteissä voi pudottaa sinut.
+                                            </div>
+                                        </li>
+                                        <li class="flex items-start gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-red-500 mt-1 flex-shrink-0"></span> 
+                                            <div>
+                                                <strong>Alle rajan:</strong><br>
+                                                Putoat lähes varmasti.
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-700 mb-1">Matemaattinen kaava (Sigmoid):</p>
+                                    <p class="text-[10px] text-slate-500 mb-1">Tämä kaava muuttaa pisteet prosentiksi (0-1). Se on loiva S-kirjain, ei jyrkkä seinä.</p>
+                                    <div class="math-block">
+                                        P = <div class="fraction">
+                                            <span class="top">1</span>
+                                            <span>1 + e <sup>&minus;3(Pisteet &minus; Raja)</sup></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. Riski -->
+                            <div class="explanation-box">
+                                <span class="explanation-title">3. Tulevaisuuden riski</span>
+                                <p class="text-xs leading-relaxed mb-2">
+                                    Tämä on hinta, jonka maksat "luottokortilla" tulevaisuudesta. Jos lupaat mitalin ja jäät sijoille ynnämuut, maksat sakon ensi kerralla.
+                                </p>
+                                <div class="math-block text-sm">
+                                    <span class="math-text">Riski</span> = <span class="math-var">Tuki</span> &times; <span class="math-var">Epäonnistumis%</span> &times; <span class="math-var">Sakkokerroin</span>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1 italic">
+                                    Missä Sakkokerroin = (Tavoite - Toteuma) × 1.5
+                                </p>
+                            </div>
+
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <!-- OIKEA PALKKI: GRAAFIT -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- 3D Graafi -->
+                <div class="card h-[500px] flex flex-col relative p-0 overflow-hidden border-0">
+                    <div class="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur p-3 rounded-lg shadow border border-slate-200 text-sm max-w-sm">
+                        <h4 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="layers" class="w-4 h-4"></i> 3D-Optimointi
+                        </h4>
+                        <p class="text-xs text-slate-600 mt-1">
+                            Z-akseli (korkeus) on <strong>Nettohyöty</strong>. Etsi korkein huippu. 
+                        </p>
+                    </div>
+                    <div id="plot3d" class="flex-grow w-full"></div>
+                </div>
+
+                <!-- 2D Graafi ja Vertailu -->
+                <div class="card flex flex-col p-4">
+                    <div class="flex justify-between items-end mb-2 px-2">
+                        <div>
+                            <h3 class="font-bold text-slate-700">Strategioiden vertailu</h3>
+                            <p class="text-xs text-slate-500">Harmaa katkoviiva = Sääntöjen vastainen (Alitavoittelu tai liian pieni budjetti)</p>
+                        </div>
+                    </div>
+                    <div id="plot2d" class="h-[400px] w-full mb-6"></div>
+                    
+                    <!-- NUMERAALINEN VERTAILU -->
+                    <div class="border-t border-slate-200 pt-4">
+                        <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                            <i data-lucide="list" class="w-4 h-4"></i> Paras budjettipyyntö eri tavoitetasoilla
+                        </h4>
+                        <div id="strategy-breakdown" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- JS täyttää tämän -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Varmistetaan että Lucide on ladattu
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+
+            // --- VAKIOT ---
+            
+            const GOAL_COEFFS = { 1: 1.000, 2: 0.975, 3: 0.950, 4: 0.925, 5: 0.900, 6: 0.875 };
+            const GOAL_NAMES = { 
+                1: "1: Mitali (Taso 1)", 
+                2: "2: T8 (Taso 1)", 
+                3: "3: Mitali (Taso 2)", 
+                4: "4: Finaali (Taso 2)", 
+                5: "5: T16 (Taso 1)", 
+                6: "6: T16 (Taso 2)" 
+            };
+            const GOAL_LABELS_SHORT = ["Taso 1", "Taso 2", "Taso 3", "Taso 4", "Taso 5", "Taso 6"];
+
+            const BASE_FAIL_RISK = { 1: 0.80, 2: 0.60, 3: 0.40, 4: 0.25, 5: 0.10, 6: 0.05 };
+
+            // DOM Elementit
+            const elInputTotalBudget = document.getElementById('input-total-budget');
+            const elInputMinBudget = document.getElementById('input-min-budget');
+            const elInputScore = document.getElementById('input-score');
+            const elInputPrevBest = document.getElementById('input-prev-best');
+            const elInputCutoff = document.getElementById('input-cutoff');
+            const elValCutoff = document.getElementById('val-cutoff');
+            const elResult = document.getElementById('optimization-result');
+            const elBreakdown = document.getElementById('strategy-breakdown');
+            const btnUpdate = document.getElementById('btn-update'); // UUSI NAPPI
+
+            // --- LOGIIKKA ---
+
+            function getBudgetCoeff(sharePct) {
+                return 1.1 - (0.2 * sharePct);
+            }
+
+            function getFinalScore(rawScore, sharePct, goalLevel) {
+                return rawScore * getBudgetCoeff(sharePct) * GOAL_COEFFS[goalLevel];
+            }
+
+            function getProbability(finalScore, cutoff) {
+                const steepness = 3; 
+                const z = (finalScore - cutoff) * steepness;
+                return 1 / (1 + Math.exp(-z));
+            }
+
+            function getAdjustedFailRisk(goalLevel, rawScore) {
+                const baseRisk = BASE_FAIL_RISK[goalLevel];
+                let factor = 1.0 - ((rawScore - 20) * 0.02);
+                factor = Math.max(0.2, Math.min(1.5, factor)); 
+                return Math.min(0.95, baseRisk * factor);
+            }
+
+            function calculateMetrics(rawScore, cutoff, prevBestLevel, sharePct, goalLevel, totalBudget, minBudget) {
+                // SÄÄNTÖTARKISTUS
+                let isForbidden = false;
+
+                // 1. Luokka 6 ei voi tavoitella koskaan
+                if (goalLevel === 6) {
+                    isForbidden = true;
+                }
+                // 2. Alitavoittelukielto
+                else if (goalLevel > prevBestLevel) {
+                    isForbidden = true;
+                }
+
+                // 3. Minimibudjetti
+                const currentMoney = (sharePct / 100) * totalBudget; 
+                if (currentMoney < minBudget) {
+                    isForbidden = true;
+                }
+
+                if (isForbidden) {
+                    return { utility: null, prob: 0, money: currentMoney, isForbidden: true };
+                }
+
+                // LASKENTA
+                const fScore = getFinalScore(rawScore, sharePct, goalLevel);
+                const prob = getProbability(fScore, cutoff);
+
+                // Sakkolaskelma
+                const diff = GOAL_COEFFS[goalLevel] - GOAL_COEFFS[6];
+                const penaltyFactor = diff * 1.5; 
+                const failProb = getAdjustedFailRisk(goalLevel, rawScore);
+                
+                const expectedFutureLoss = currentMoney * failProb * penaltyFactor * prob;
+                const netUtility = (currentMoney * prob) - expectedFutureLoss;
+
+                return { 
+                    utility: netUtility, 
+                    prob: prob, 
+                    money: currentMoney, 
+                    risk: expectedFutureLoss,
+                    isForbidden: false 
+                };
+            }
+
+            // --- UI PÄIVITYKSET ---
+            // Nämä vain päivittävät tekstikenttiä, eivät laske raskaita kaavioita
+            function updateUILabels() {
+                elValCutoff.innerText = elInputCutoff.value;
+            }
+
+            // --- VARSINAINEN SIMULAATIO (Vain napista) ---
+            function runSimulation() {
+                const totalBudget = parseFloat(elInputTotalBudget.value) || 5700000;
+                const minBudget = parseFloat(elInputMinBudget.value) || 24000;
+                const rawScore = parseFloat(elInputScore.value);
+                const cutoff = parseFloat(elInputCutoff.value);
+                const prevBest = parseInt(elInputPrevBest.value);
+
+                const shareSteps = [];
+                for(let s=0.1; s<=2.5; s+=0.05) shareSteps.push(s); 
+                
+                const goalLevels = [1, 2, 3, 4, 5, 6];
+
+                let zData = [];
+                let bestVal = -Infinity;
+                let bestStrat = null;
+                let goalStrategies = {}; 
+
+                // Lasketaan 3D-data ja etsitään optimit
+                for (let g of goalLevels) {
+                    let row = [];
+                    let currentGoalBest = { utility: -Infinity, share: 0, money: 0, prob: 0, forbidden: true };
+                    
+                    for (let s of shareSteps) {
+                        const res = calculateMetrics(rawScore, cutoff, prevBest, s, g, totalBudget, minBudget);
+                        
+                        if (res.isForbidden) {
+                            row.push(NaN);
+                        } else {
+                            row.push(res.utility);
+                            
+                            if (res.utility > bestVal) {
+                                bestVal = res.utility;
+                                bestStrat = { ...res, share: s, goal: g };
+                            }
+                            
+                            if (res.utility > currentGoalBest.utility) {
+                                currentGoalBest = { ...res, share: s, goal: g, forbidden: false };
+                            }
+                        }
+                    }
+                    zData.push(row);
+                    goalStrategies[g] = currentGoalBest;
+                }
+
+                if (typeof Plotly !== 'undefined') {
+                    draw3D(shareSteps, goalLevels, zData);
+                    draw2D(shareSteps, goalLevels, rawScore, cutoff, prevBest, totalBudget, minBudget);
+                }
+                drawResult(bestVal, bestStrat);
+                drawBreakdown(goalStrategies);
+            }
+
+            function drawBreakdown(strategies) {
+                let html = '';
+                const levels = [1, 2, 3, 4, 5]; 
+
+                levels.forEach(lvl => {
+                    const strat = strategies[lvl];
+                    const isCurrentBest = strat.utility > -Infinity;
+                    let content = '';
+                    let borderClass = 'border-slate-200';
+                    
+                    if (strat.forbidden) {
+                         content = `<span class="text-xs text-slate-400 italic">Ei validia strategiaa / Estetty</span>`;
+                    } else {
+                        content = `
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-slate-500">Haettu:</span>
+                                <span class="font-bold text-slate-800">${strat.share.toFixed(1)} % <span class="text-xs font-normal">(${Math.round(strat.money/1000)}k€)</span></span>
+                            </div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-slate-500">Läpipääsy:</span>
+                                <span class="font-bold ${strat.prob > 0.8 ? 'text-green-600' : (strat.prob > 0.5 ? 'text-yellow-600' : 'text-red-500')}">${(strat.prob * 100).toFixed(0)} %</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-slate-500">Nettohyöty:</span>
+                                <span class="font-bold text-blue-600">${Math.round(strat.utility/1000)}k€</span>
+                            </div>
+                        `;
+                        if (strat.utility > 0) borderClass = "border-green-200 bg-green-50/30";
+                    }
+
+                    html += `
+                        <div class="rounded border ${borderClass} p-3">
+                            <div class="font-bold text-sm text-slate-700 mb-2 pb-1 border-b border-slate-100 truncate">${GOAL_NAMES[lvl]}</div>
+                            ${content}
+                        </div>
+                    `;
+                });
+
+                elBreakdown.innerHTML = html;
+            }
+
+            function drawResult(val, strat) {
+                if (!strat || val <= 0) {
+                    elResult.innerHTML = `
+                        <div class="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                            <p class="text-red-400 font-bold text-center">Ei suositeltavaa strategiaa.</p>
+                            <p class="text-red-300 text-xs text-center mt-1">
+                                Pisteet eivät riitä ylittämään rajaa, riski on liian suuri, tai budjettirajoitus estää haun.
+                            </p>
+                        </div>`;
+                    return;
+                }
+
+                let probColor = strat.prob > 0.9 ? "text-green-400" : (strat.prob > 0.5 ? "text-yellow-400" : "text-red-400");
+                
+                elResult.innerHTML = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="border-b border-white/10 pb-2">
+                            <p class="text-slate-400 text-xs uppercase font-semibold">Suositeltu Budjetti</p>
+                            <p class="text-3xl font-bold text-white">${strat.share.toFixed(1)} %</p>
+                            <p class="text-xs text-slate-400 font-mono">
+                                ${Math.round(strat.money).toLocaleString()} €
+                                <span class="block text-[10px] text-slate-500">(Haettava summa)</span>
+                            </p>
+                        </div>
+                        <div class="border-b border-white/10 pb-2">
+                            <p class="text-slate-400 text-xs uppercase font-semibold">Suositeltu Tavoite</p>
+                            <p class="text-3xl font-bold text-white">Taso ${strat.goal}</p>
+                            <p class="text-xs text-slate-400 truncate">${GOAL_NAMES[strat.goal]}</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-xs uppercase font-semibold">Läpipääsy %</p>
+                            <p class="text-2xl font-bold ${probColor}">${(strat.prob * 100).toFixed(1)} %</p>
+                        </div>
+                        <div class="relative group">
+                            <p class="text-slate-400 text-xs uppercase font-semibold flex items-center gap-1 cursor-help underline decoration-dotted">
+                                Nettohyöty (?)
+                            </p>
+                            <div class="absolute bottom-full mb-2 hidden group-hover:block bg-slate-800 text-xs p-2 rounded w-48 z-20 shadow-xl border border-slate-700">
+                                Tämä on strateginen arvo. Se yhdistää rahallisen hyödyn ja riskin yhteen lukuun päätöksenteon tueksi.
+                            </div>
+                            <p class="text-2xl font-bold text-blue-400">${Math.round(strat.utility).toLocaleString()}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function draw3D(x, y, z) {
+                const data = [{
+                    z: z,
+                    x: x,
+                    y: y, 
+                    type: 'surface',
+                    colorscale: 'Viridis',
+                    showscale: false,
+                    contours: {
+                        z: { show: true, usecolormap: true, highlightcolor: "#42f5e6", project: { z: true } }
+                    }
+                }];
+
+                const layout = {
+                    margin: { l: 0, r: 0, b: 0, t: 0 },
+                    scene: {
+                        xaxis: { title: 'Budjetti %' },
+                        yaxis: { 
+                            title: 'Tavoite',
+                            tickvals: y,
+                            ticktext: GOAL_LABELS_SHORT
+                        },
+                        zaxis: { title: 'Nettohyöty' },
+                        camera: { eye: { x: 1.6, y: 1.6, z: 1.3 } }
+                    },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                };
+
+                Plotly.newPlot('plot3d', data, layout, {responsive: true, displayModeBar: false});
+            }
+
+            function draw2D(shares, goals, rawScore, cutoff, prevBest, totalBudget, minBudget) {
+                const traces = [];
+                const colors = ["#ef4444", "#f97316", "#f59e0b", "#84cc16", "#10b981", "#3b82f6"];
+
+                goals.forEach((g, idx) => {
+                    const yVals = [];
+                    let isForbiddenByGoal = false;
+                    if (g === 6) isForbiddenByGoal = true;
+                    else if (g > prevBest) isForbiddenByGoal = true;
+
+                    shares.forEach(s => {
+                        const res = calculateMetrics(rawScore, cutoff, prevBest, s, g, totalBudget, minBudget);
+                        yVals.push(res.isForbidden ? null : res.utility);
+                    });
+
+                    traces.push({
+                        x: shares,
+                        y: yVals,
+                        mode: 'lines',
+                        name: GOAL_NAMES[g] + (isForbiddenByGoal ? " (Estetty)" : ""),
+                        line: { 
+                            color: isForbiddenByGoal ? '#cbd5e1' : colors[idx], 
+                            width: isForbiddenByGoal ? 2 : 3,
+                            dash: isForbiddenByGoal ? 'dot' : 'solid'
+                        },
+                        opacity: isForbiddenByGoal ? 0.5 : 1
+                    });
+                });
+
+                const layout = {
+                    margin: { l: 60, r: 10, b: 10, t: 10 },
+                    xaxis: { title: 'Haettu Budjetti (%)' },
+                    yaxis: { title: 'Nettohyöty' },
+                    showlegend: true,
+                    legend: { x: 1, xanchor: 'right', y: 1 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    hovermode: 'closest'
+                };
+
+                Plotly.newPlot('plot2d', traces, layout, {responsive: true, displayModeBar: false});
+            }
+
+            // Event Listeners - Vain UI Labelit päivittyvät, ei raskas laskenta
+            elInputCutoff.addEventListener('input', updateUILabels);
+            
+            // Simulation trigger
+            btnUpdate.addEventListener('click', runSimulation);
+
+            // Ajetaan kerran alussa
+            updateUILabels();
+            runSimulation();
+        });
+    </script>
+</body>
+</html>
