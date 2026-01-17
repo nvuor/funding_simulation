@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Huippu-urheilun Iskuetäisyysanalyysi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .method-card { transition: all 0.3s ease; }
+        .bar-container { background-color: #e5e7eb; border-radius: 9999px; height: 12px; overflow: hidden; }
+        .bar-fill { height: 100%; transition: width 0.5s ease-in-out; }
+        .info-section { background-color: #ffffff; border-radius: 0.75rem; padding: 2rem; margin-top: 3rem; border: 1px solid #e5e7eb; }
+    </style>
+</head>
+<body class="p-6">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Huippu-urheilun Iskuetäisyysanalyysi</h1>
+            <p class="text-gray-600">Analysoi T8-potentiaalia suhteessa mitalitasoon (Metodi A vs. Metodi B)</p>
+        </header>
+
+        <!-- Input Section -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-6">
+                
+                <!-- Settings & Paste Area -->
+                <div class="space-y-6">
+                    <!-- Basic Settings -->
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <label class="block text-sm font-bold text-gray-700 mb-2">1. Kilpailun tiedot</label>
+                        <input type="text" id="compName" class="w-full border rounded-md p-2 mb-3" placeholder="Esim. MM-finaali 2025">
+                        
+                        <div class="flex flex-col gap-2">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="resultType" value="time" checked class="text-blue-600">
+                                <span class="ml-2 text-sm">Aika (Pienempi parempi)</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="resultType" value="distance" class="text-blue-600">
+                                <span class="ml-2 text-sm">Matka/Pisteet (Suurempi parempi)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Paste Area -->
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <label class="block text-sm font-bold text-blue-800 mb-2">
+                            <i class="fas fa-paste mr-1"></i> 2. Pikasyöttö (Excel / Lista)
+                        </label>
+                        <textarea id="pasteArea" rows="5" class="w-full border rounded p-2 text-xs font-mono mb-2" 
+                            placeholder="Kopioi tähän (esim.):&#10;1. Urheilija A 10.00&#10;2. Urheilija B 10.10&#10;..."></textarea>
+                        <div class="flex gap-2">
+                            <button onclick="processPaste()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded transition">
+                                Täytä taulukko
+                            </button>
+                            <button onclick="clearInputs()" class="bg-gray-200 hover:bg-gray-300 text-gray-600 text-sm font-bold py-2 px-3 rounded transition" title="Tyhjennä">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Demos -->
+                    <div class="flex gap-2 justify-center">
+                        <button onclick="loadDemo('javelin')" class="px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded text-gray-600">Lataa Keihäs Demo</button>
+                        <button onclick="loadDemo('sprint')" class="px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded text-gray-600">Lataa Kelaus Demo</button>
+                    </div>
+                </div>
+
+                <!-- Manual Inputs (Organized 1-8 Left, 9-16 Right) -->
+                <div class="col-span-2">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-sm font-bold text-gray-700">3. Tarkista / Muokkaa (Max 16)</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+                        <!-- Left Column (1-8) -->
+                        <div id="colLeft" class="space-y-2"></div>
+                        <!-- Right Column (9-16) -->
+                        <div id="colRight" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-center mt-6 pt-6 border-t">
+                <button onclick="calculate()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-12 rounded-lg shadow-lg transform transition hover:scale-105 text-lg">
+                    <i class="fas fa-calculator mr-2"></i> Laske Analyysi
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Section (Hidden initially) -->
+        <div id="resultsArea" class="hidden space-y-8">
+            
+            <!-- Statistical Insight -->
+            <div class="bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-bold text-indigo-900">Jakauman Analyysi (Verrokkiryhmä 3-16)</h3>
+                        <p class="text-sm text-indigo-800 mt-1" id="skewnessText">Lasketaan...</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Vinous (Skewness)</span>
+                        <div class="text-2xl font-bold text-indigo-900" id="skewnessValue">0.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Method A -->
+                <div class="method-card bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden opacity-75 hover:opacity-100">
+                    <div class="bg-gray-100 p-4 border-b border-gray-200">
+                        <h2 class="font-bold text-lg text-gray-800">Metodi A: Perinteinen (Top 16)</h2>
+                        <p class="text-xs text-gray-500">Sisältää kaikki tulokset. Altis poikkeustulosten aiheuttamalle vääristymälle.</p>
+                        <div class="mt-2 text-xs grid grid-cols-2 gap-2 text-gray-600">
+                            <div>Keskiarvo: <span id="meanA" class="font-mono font-bold">-</span></div>
+                            <div>Hajonta: <span id="stdA" class="font-mono font-bold">-</span></div>
+                        </div>
+                    </div>
+                    <div class="p-4 overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-50">
+                                <tr>
+                                    <th class="px-2 py-2">Sija</th>
+                                    <th class="px-2 py-2">Nimi</th>
+                                    <th class="px-2 py-2">Tulos</th>
+                                    <th class="px-2 py-2 text-right">Z-arvo</th>
+                                    <th class="px-2 py-2 text-right">Etäisyys %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableA"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Method B -->
+                <div class="method-card bg-white rounded-xl shadow-xl border-2 border-blue-600 overflow-hidden relative">
+                    <div class="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl shadow-sm">EHDOTETTU MALLI</div>
+                    <div class="bg-blue-50 p-4 border-b border-blue-100">
+                        <h2 class="font-bold text-lg text-blue-900">Metodi B: Verrokkiryhmä (Sijat 3-16)</h2>
+                        <p class="text-xs text-blue-600">Sijat 1-2 pois laskennasta. Mittaa etäisyyttä pronssitasoon ilman vääristymää.</p>
+                        <div class="mt-2 text-xs grid grid-cols-2 gap-2 text-blue-800">
+                            <div>Keskiarvo: <span id="meanB" class="font-mono font-bold">-</span></div>
+                            <div>Hajonta: <span id="stdB" class="font-mono font-bold">-</span></div>
+                        </div>
+                    </div>
+                    <div class="p-4 overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-blue-800 uppercase bg-blue-50">
+                                <tr>
+                                    <th class="px-2 py-2">Sija</th>
+                                    <th class="px-2 py-2">Nimi</th>
+                                    <th class="px-2 py-2">Tulos</th>
+                                    <th class="px-2 py-2 text-right">Z-arvo</th>
+                                    <th class="px-2 py-2 text-right">Etäisyys %</th>
+                                    <th class="px-2 py-2 text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableB"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Logic Explanation Section -->
+        <div class="info-section">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">Analyysin Logiikka ja Perustelut</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="font-bold text-lg text-blue-800 mb-2">1. Miksi sijoja 1-2 ei huomioida laskennassa?</h3>
+                    <p class="text-gray-700 text-sm mb-4 leading-relaxed">
+                        Järjestelmän strateginen tavoite on mitali. T8-taso (8 pistettä) toimii tärkeänä väliaskeleena matkalla tähän tavoitteeseen. 
+                        Sijat 1 ja 2 ovat kuitenkin usein poikkeuksellisia yksilösuorituksia, jotka kasvattavat tilastollista hajontaa keinotekoisesti.
+                        Jos nämä "haamutulokset" ovat mukana, mitalitaso voi näyttää tilastollisesti saavuttamattomalta myös niille urheilijoille, 
+                        jotka ovat tosiasiassa iskuetäisyydellä. Rajaamalla vertailu sijoihin 3-16 luomme stabiilin verrokkiryhmän, 
+                        jossa pronssimitali toimii realistisena ja vertailukelpoisena huipputason mittarina.
+                    </p>
+
+                    <h3 class="font-bold text-lg text-blue-800 mb-2">2. Pronssi-ankkuri (100% Taso)</h3>
+                    <p class="text-gray-700 text-sm mb-4 leading-relaxed">
+                        Mittatikkuna ei käytetä pelkkää joukon keskiarvoa, vaan <strong>pronssimitalistin Z-arvoa</strong>. 
+                        Tämä asettaa riman dynaamisesti: tavoite ei ole olla "keskinkertainen" vaan olla lähellä mitalia. 
+                        Pronssimitalisti edustaa tässä mallissa 100% tavoitetasoa.
+                    </p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-lg text-green-700 mb-2">3. Miksi juuri 30% Iskuetäisyys?</h3>
+                    <p class="text-gray-700 text-sm mb-4 leading-relaxed">
+                        Pisteytysjärjestelmässä pisteet tuplaantuvat portaittain: T16 (4p) → T8 (8p) → Mitali (16p). 
+                        T8-taso on siis matemaattinen puoliväli perussuorituksen ja unelman välillä.
+                    </p>
+                    <ul class="list-disc list-inside text-sm text-gray-700 space-y-2">
+                        <li><strong>Lähtötaso (0%):</strong> Normaalijakaumassa sijat 9–12 asettuvat tyypillisesti lähelle ryhmän keskiarvoa (Z=0).</li>
+                        <li><strong>T8-taso (25-35%):</strong> Tilastollisesti sija 8 asettuu finaalijoukossa useimmiten n. 25–35 % kohdalle matkalla keskiarvosta kärkeen.</li>
+                        <li><strong>Perustelu:</strong> 30% raja on valittu edustamaan tätä kynnystä. Se vaatii, että urheilija on todistettavasti irtautunut keskiarvosta ja ottanut konkreettisen askeleen kohti mitalitasoa. Tämä oikeuttaa pisteiden tuplaamisen suhteessa sijaan 9.</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="mt-6 bg-gray-50 p-4 rounded text-xs text-gray-500 font-mono">
+                <strong>Kaava:</strong> Iskuetäisyys % = (Oma_Z_arvo / Pronssi_Z_arvo) * 100 <br>
+                <em>Missä Z-arvo lasketaan joukosta Sijat 3-16.</em>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Initialization ---
+        const colLeft = document.getElementById('colLeft');
+        const colRight = document.getElementById('colRight');
+        
+        // Create 16 Input Rows (Split into two columns)
+        for (let i = 1; i <= 16; i++) {
+            const row = document.createElement('div');
+            row.className = "flex gap-2 items-center";
+            row.innerHTML = `
+                <span class="text-xs font-bold text-gray-400 w-6 text-right">${i}.</span>
+                <input type="text" id="name${i}" placeholder="Nimi" class="flex-grow border rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                <input type="number" step="0.01" id="res${i}" placeholder="Tulos" class="w-24 border rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-500 font-mono text-right">
+            `;
+            
+            if (i <= 8) {
+                colLeft.appendChild(row);
+            } else {
+                colRight.appendChild(row);
+            }
+        }
+
+        // --- Demo Data ---
+        const demos = {
+            javelin: {
+                name: "Miesten Keihäs MM-Finaali 2023",
+                type: "distance",
+                data: [
+                    {n: "Chopra", r: 88.17}, {n: "Nadeem", r: 87.82}, {n: "Vadlejch", r: 86.67},
+                    {n: "Weber", r: 85.79}, {n: "Jena", r: 84.77}, {n: "Manu", r: 84.14},
+                    {n: "Helander", r: 83.38}, {n: "Matusevicius", r: 82.29}, {n: "Wegner", r: 80.75},
+                    {n: "Abdelrahman", r: 80.64}, {n: "Mardare", r: 79.66}, {n: "Herman", r: 79.50},
+                    {n: "Q-1", r: 79.00}, {n: "Q-2", r: 78.50}, {n: "Q-3", r: 78.00},
+                    {n: "Q-4", r: 77.50}
+                ]
+            },
+            sprint: {
+                name: "Miesten Kelaus 100m MM 2025",
+                type: "time",
+                data: [
+                    {n: "Paeng", r: 13.66}, {n: "Yang", r: 13.81}, {n: "Balde", r: 13.86},
+                    {n: "Alqami", r: 13.98}, {n: "Ying", r: 14.08}, {n: "Alzahrani", r: 14.13},
+                    {n: "Mattila", r: 14.15}, {n: "Siangliam", r: 14.38}, {n: "Aripin", r: 14.69},
+                    {n: "Bailey", r: 14.73}, {n: "Sosa", r: 15.05}, {n: "Karapetyan", r: 16.82},
+                    {n: "Sargsyan", r: 19.03}
+                ]
+            }
+        };
+
+        function loadDemo(key) {
+            const demo = demos[key];
+            document.getElementById('compName').value = demo.name;
+            document.querySelector(`input[name="resultType"][value="${demo.type}"]`).checked = true;
+            clearInputs();
+            demo.data.forEach((d, i) => {
+                if(i < 16) {
+                    document.getElementById(`name${i+1}`).value = d.n;
+                    document.getElementById(`res${i+1}`).value = d.r;
+                }
+            });
+        }
+
+        function clearInputs() {
+            for(let i=1; i<=16; i++) {
+                document.getElementById(`name${i}`).value = "";
+                document.getElementById(`res${i}`).value = "";
+            }
+            document.getElementById('pasteArea').value = "";
+        }
+
+        // --- Paste Logic ---
+        function processPaste() {
+            const text = document.getElementById('pasteArea').value;
+            if (!text.trim()) return;
+
+            const lines = text.split(/\r?\n/);
+            let idx = 1;
+
+            lines.forEach(line => {
+                if (idx > 16) return;
+                line = line.trim();
+                if (!line) return;
+
+                const match = line.match(/([\d.,]+)\s*$/);
+                
+                if (match) {
+                    let resultStr = match[1].replace(',', '.');
+                    let nameStr = line.substring(0, line.lastIndexOf(match[0])).trim();
+                    nameStr = nameStr.replace(/^\d+[.\)]\s*/, '');
+                    nameStr = nameStr.trim();
+
+                    if (nameStr && !isNaN(parseFloat(resultStr))) {
+                        document.getElementById(`name${idx}`).value = nameStr;
+                        document.getElementById(`res${idx}`).value = resultStr;
+                        idx++;
+                    }
+                }
+            });
+        }
+
+        // --- Core Logic ---
+
+        function calculate() {
+            const type = document.querySelector('input[name="resultType"]:checked').value;
+            let athletes = [];
+            for (let i = 1; i <= 16; i++) {
+                const name = document.getElementById(`name${i}`).value.trim();
+                const resStr = document.getElementById(`res${i}`).value;
+                if (name && resStr) {
+                    athletes.push({ name: name, result: parseFloat(resStr), originalIndex: i });
+                }
+            }
+
+            if (athletes.length < 3) {
+                alert("Tarvitaan vähintään 3 urheilijaa analyysiin (Pronssiankkuri).");
+                return;
+            }
+
+            athletes.sort((a, b) => type === 'time' ? a.result - b.result : b.result - a.result);
+
+            const poolB_indices = athletes.length >= 16 ? athletes.slice(2, 16) : athletes.slice(2);
+            const skewness = calculateSkewness(poolB_indices.map(a => a.result));
+            renderSkewness(skewness, type);
+
+            const poolA = athletes.slice(0, 16);
+            const statsA = getStats(poolA.map(a => a.result));
+            renderTable(poolA, statsA, 'tableA', 'meanA', 'stdA', type, false);
+
+            const calcPoolB = poolA.length > 2 ? poolA.slice(2) : poolA;
+            const statsB = getStats(calcPoolB.map(a => a.result));
+            renderTable(poolA, statsB, 'tableB', 'meanB', 'stdB', type, true);
+
+            document.getElementById('resultsArea').classList.remove('hidden');
+            document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function getStats(values) {
+            const n = values.length;
+            if (n === 0) return { mean: 0, std: 0 };
+            const mean = values.reduce((a, b) => a + b, 0) / n;
+            const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (n - 1 || 1);
+            return { mean: mean, std: Math.sqrt(variance) };
+        }
+
+        function calculateSkewness(values) {
+            const n = values.length;
+            if (n < 3) return 0;
+            const { mean, std } = getStats(values);
+            if (std === 0) return 0;
+            let sumCubedDiff = 0;
+            for (let val of values) { sumCubedDiff += Math.pow((val - mean) / std, 3); }
+            return (n / ((n - 1) * (n - 2))) * sumCubedDiff;
+        }
+
+        function getZ(val, mean, std, type) {
+            if (std === 0) return 0;
+            if (type === 'time') return (mean - val) / std;
+            return (val - mean) / std;
+        }
+
+        // --- Rendering ---
+
+        function renderSkewness(skew, type) {
+            const elVal = document.getElementById('skewnessValue');
+            const elText = document.getElementById('skewnessText');
+            elVal.innerText = skew.toFixed(2);
+            
+            let desc = "";
+            if (Math.abs(skew) < 0.5) {
+                desc = "Jakauma on melko symmetrinen (Normaalijakautunut).";
+            } else if (skew > 0) {
+                desc = type === 'distance' 
+                    ? "Positiivinen vinous: Kärki erottuu massasta ylöspäin (Hyvä)." 
+                    : "Positiivinen vinous: Häntäpää on kaukana kärjestä (Raskas häntä).";
+            } else {
+                desc = type === 'distance' 
+                    ? "Negatiivinen vinous: Massa on pakkautunut kärkeen (Tiukka kisa)." 
+                    : "Negatiivinen vinous: Kärki erottuu massasta alaspäin (Sprintti-tyyppi).";
+            }
+            elText.innerText = desc;
+        }
+
+        function renderTable(athletes, stats, tableId, meanId, stdId, type, isMethodB) {
+            const tbody = document.getElementById(tableId);
+            document.getElementById(meanId).innerText = stats.mean.toFixed(2);
+            document.getElementById(stdId).innerText = stats.std.toFixed(2);
+            tbody.innerHTML = "";
+
+            const bronzeRes = athletes[2].result; 
+            const zBronze = getZ(bronzeRes, stats.mean, stats.std, type);
+
+            athletes.forEach((ath, idx) => {
+                const rank = idx + 1;
+                const z = getZ(ath.result, stats.mean, stats.std, type);
+                
+                let pct = 0;
+                if (zBronze > 0) {
+                    pct = (z / zBronze) * 100;
+                }
+
+                let statusHtml = "";
+                let rowClass = "";
+                let zDisplay = z.toFixed(2);
+                let pctDisplay = Math.round(pct) + "%";
+
+                if (isMethodB && rank <= 2) {
+                    rowClass = "bg-purple-50 text-purple-900 border-l-4 border-purple-500";
+                    statusHtml = `<span class="font-bold">Kärki (1-2)</span>`;
+                    zDisplay = "-"; pctDisplay = "-";
+                } else if (rank <= 3) {
+                    rowClass = "bg-yellow-50 text-yellow-900 font-bold border-l-4 border-yellow-400";
+                    statusHtml = `<i class="fas fa-medal text-yellow-500"></i> Mitali`;
+                } else if (isMethodB) {
+                    if (pct >= 30) {
+                        rowClass = "bg-green-50 text-green-900 border-l-4 border-green-500";
+                        statusHtml = `<span class="text-green-700 font-bold"><i class="fas fa-check-circle"></i> T8 (Laatu)</span>`;
+                    } else if (rank <= 8) {
+                        rowClass = "bg-orange-50 text-orange-900 border-l-4 border-orange-400";
+                        statusHtml = `<span class="text-orange-700 font-semibold"><i class="fas fa-exclamation-triangle"></i> T8 (Sija)</span>`;
+                    } else {
+                        rowClass = "text-gray-500";
+                        statusHtml = `<span class="text-gray-400">T16</span>`;
+                    }
+                } else {
+                     if (rank <= 8) rowClass = "bg-gray-50 font-semibold";
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = `border-b ${rowClass} transition hover:bg-opacity-80`;
+                
+                let html = `
+                    <td class="px-2 py-3 font-mono text-center">${rank}.</td>
+                    <td class="px-2 py-3 font-medium truncate max-w-[120px]" title="${ath.name}">${ath.name}</td>
+                    <td class="px-2 py-3 font-mono font-bold">${ath.result.toFixed(2)}</td>
+                    <td class="px-2 py-3 text-right font-mono">${zDisplay}</td>
+                    <td class="px-2 py-3">
+                        <div class="flex items-center justify-end gap-2">
+                            <span class="text-xs font-bold w-8 text-right">${pctDisplay}</span>
+                            ${ isMethodB && rank > 2 ? `
+                            <div class="w-16 bg-gray-200 rounded-full h-1.5">
+                                <div class="h-1.5 rounded-full ${pct >= 30 ? 'bg-green-500' : 'bg-gray-400'}" style="width: ${Math.max(0, Math.min(100, pct))}%"></div>
+                            </div>` : '' }
+                        </div>
+                    </td>
+                `;
+
+                if (isMethodB) {
+                    html += `<td class="px-2 py-3 text-center text-xs">${statusHtml}</td>`;
+                }
+
+                tr.innerHTML = html;
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>
